@@ -1,18 +1,18 @@
 const STEPS = [
   {
-    icon: "🔎",
-    title: "Search & filter",
-    body: "Instant client-side search across 1,500+ APIs. Filter by category, auth type, HTTPS — and CORS, the combination nobody else surfaces.",
+    icon: "★",
+    title: "Popularity & categories",
+    body: "The well-known APIs surface first via a curated popularity rank blended with real GitHub stars. Browse the 51 real categories as clickable tiles, sort by Popular / A–Z / Recently checked.",
   },
   {
-    icon: "⚡",
-    title: "The no-auth + CORS combo",
-    body: "One click finds APIs you can call straight from browser JavaScript with zero setup — no key, no backend, no CORS errors. Perfect for demos and side projects.",
+    icon: "✓",
+    title: "Verified, not just claimed",
+    body: "A build-time pipeline actually tests each endpoint over HTTPS and reconciles it with the README's flag — so 'HTTPS ✓ verified' means we confirmed it, not that we took someone's word.",
   },
   {
     icon: "▸",
     title: "Try it live",
-    body: "Fire a real GET request and read the syntax-highlighted JSON in-page. CORS APIs run directly from your browser; the rest go through one SSRF-hardened proxy.",
+    body: "Fire a real GET request and read the syntax-highlighted JSON in-page. CORS + no-auth APIs run directly from your browser; the rest go through one SSRF-hardened proxy.",
   },
   {
     icon: "📋",

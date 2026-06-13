@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Api } from "@/lib/types";
-import { AuthBadge, CorsBadge, HttpsBadge } from "./Badges";
+import { AuthBadge, CorsBadge, HttpsBadge, StarsBadge, ActivityBadge } from "./Badges";
 import { Playground } from "./Playground";
 
 export function ApiCard({ api }: { api: Api }) {
@@ -17,7 +17,16 @@ export function ApiCard({ api }: { api: Api }) {
     >
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-[15px] font-bold leading-tight text-ink">
+          <h3 className="flex items-center gap-1.5 text-[15px] font-bold leading-tight text-ink">
+            {api.popularity && api.popularity <= 24 && (
+              <span
+                title="Curated popular API"
+                aria-label="Popular"
+                className="shrink-0 text-warn"
+              >
+                ★
+              </span>
+            )}
             {api.url ? (
               <a
                 href={api.url}
@@ -43,7 +52,9 @@ export function ApiCard({ api }: { api: Api }) {
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           <AuthBadge auth={api.auth} label={api.authLabel} />
           <CorsBadge cors={api.cors} />
-          <HttpsBadge https={api.https} />
+          <HttpsBadge api={api} />
+          <StarsBadge api={api} />
+          <ActivityBadge api={api} />
         </div>
 
         <div className="mt-3 flex items-center gap-2">

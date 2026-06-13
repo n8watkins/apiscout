@@ -83,6 +83,61 @@ body {
   animation: shimmer 1.4s linear infinite;
 }
 
+/* --- Animated hero ------------------------------------------------------- */
+
+/* Slowly drifting indigo gradient field behind the hero. GPU-friendly
+ * (background-position only); paused entirely under reduced-motion. */
+@keyframes hero-drift {
+  0%   { background-position: 0% 50%, 100% 50%, 50% 0%; }
+  50%  { background-position: 100% 50%, 0% 50%, 50% 100%; }
+  100% { background-position: 0% 50%, 100% 50%, 50% 0%; }
+}
+.hero-field {
+  background:
+    radial-gradient(38rem 38rem at 15% 20%, rgba(79, 70, 229, 0.16), transparent 60%),
+    radial-gradient(34rem 34rem at 85% 10%, rgba(37, 99, 235, 0.14), transparent 60%),
+    radial-gradient(30rem 30rem at 60% 90%, rgba(99, 102, 241, 0.12), transparent 60%);
+  background-size: 200% 200%, 200% 200%, 200% 200%;
+  animation: hero-drift 22s ease-in-out infinite;
+}
+
+/* Faint moving grid lines, masked to fade at the edges. */
+.hero-grid {
+  background-image:
+    linear-gradient(to right, rgba(79, 70, 229, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(79, 70, 229, 0.06) 1px, transparent 1px);
+  background-size: 44px 44px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 35%, #000 40%, transparent 100%);
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 35%, #000 40%, transparent 100%);
+  animation: hero-grid-pan 28s linear infinite;
+}
+@keyframes hero-grid-pan {
+  from { background-position: 0 0, 0 0; }
+  to   { background-position: 44px 44px, 44px 44px; }
+}
+
+/* Floating API chips that bob gently. */
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+.float-chip { animation: float-y var(--dur, 6s) ease-in-out infinite; animation-delay: var(--delay, 0s); }
+
+/* Blinking cursor for the typewriter line. */
+@keyframes caret-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+.caret { animation: caret-blink 1s step-end infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-field,
+  .hero-grid,
+  .float-chip,
+  .caret,
+  .pulse-dot,
+  .skeleton {
+    animation: none !important;
+  }
+}
+
 /* Syntax highlighting for the JSON viewer. */
 .tok-key { color: #4f46e5; }
 .tok-str { color: #0f766e; }
