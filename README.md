@@ -12,22 +12,32 @@ The `public-apis` README is one of the most-starred repos on GitHub — an incre
 
 APIScout fixes that:
 
+- **Popularity, surfaced first** — a curated popularity rank (blended with real GitHub stars) plus a **"Popular APIs"** strip, so the well-known APIs come first. Sort by **Popular / A–Z / Recently checked**.
+- **Categories as a browse mechanism** — all **51 real categories** as clickable tiles with per-category counts, not a buried dropdown.
+- **Verified, not just claimed** — a build-time pipeline actually tests each endpoint over HTTPS and pulls GitHub activity, so a "HTTPS ✓ verified" badge means *we confirmed it*. **1,363 / 1,562** endpoints HTTPS-verified this pass; the rest are honestly marked *claimed* or *unconfirmed*.
 - **Instant search** across 1,562 APIs by name, description or category
 - **Real filters** — category, auth type, HTTPS, and **CORS**
 - **The combo nobody else surfaces:** one click finds the **263 no-auth + CORS** APIs you can call straight from browser JavaScript — no key, no backend, no CORS errors
 - **A live playground** — fire a real `GET` request and read the syntax-highlighted JSON response in-page
 - **Copy-paste snippets** — ready-to-ship `fetch()` and `curl` for every endpoint
 
+> **📖 Want the full design?** See **[HOW_IT_WORKS.md](HOW_IT_WORKS.md)** — architecture, data pipeline, the verification model, the SSRF-hardened proxy internals, the animated hero, SEO and project structure.
+
 ## Features
 
 | | |
 |---|---|
+| ★ **Popularity & sorting** | Curated popularity rank + GitHub stars; a "Popular APIs" strip; sort Popular / A–Z / Recently checked. |
+| 🧭 **Category rail** | 51 real categories as clickable tiles with counts — a first-class browse mechanism. |
+| ✓ **Verified, not claimed** | Build-time HTTPS verification + GitHub activity. Badges distinguish *verified* / *claimed* / *unconfirmed* — never a bare "HTTPS ✓" we didn't test. |
 | 🔎 **Instant client-side search** | Filters 1,500+ APIs as you type — no server round-trips. |
 | ⚡ **No-auth + CORS filter** | The unmet need: surface APIs callable directly from the browser. Prominent one-click combo. |
 | ▸ **Live "Try it" playground** | Sends a real request and renders the JSON in a syntax-highlighted viewer. |
-| 🧭 **Smart routing** | CORS + no-auth APIs are called directly client-side; everything else goes through one SSRF-hardened serverless proxy. |
+| 🧩 **Smart routing** | CORS + no-auth APIs are called directly client-side; everything else goes through one SSRF-hardened serverless proxy. |
 | 📋 **Snippet generator** | Copy a `fetch()` or `curl` for any endpoint. |
-| 🎨 **Premium light UI** | Indigo / electric-blue "dev playground" aesthetic, framer-motion animations, skeletons, empty states, keyboard-accessible search (`/` to focus). |
+| 🎨 **Animated, premium light UI** | Indigo "dev playground" aesthetic, an animated hero (gradient field + typewriter + live JSON), framer-motion, skeletons, empty states, keyboard-accessible search (`/`), `prefers-reduced-motion` respected. |
+
+![Popular APIs strip and the clickable category rail](assets/categories.png)
 
 ## How it works
 
@@ -48,15 +58,21 @@ Because the user supplies the URL to fetch, a naive server-side fetch would be a
 
 See [`lib/safefetch.ts`](lib/safefetch.ts) and [`app/api/proxy/route.ts`](app/api/proxy/route.ts).
 
-### The data pipeline
+### The data pipeline & verification
 
-`data/apis.json` is baked at build time from the upstream README:
+`data/apis.json` is baked at build time from the upstream README, then enriched
+with verification data — both committed to git, so the deployed app never blocks
+on the network:
 
 ```bash
-npm run data   # fetch + parse public-apis README → data/apis.json
+npm run data     # fetch + parse public-apis README → data/apis.json
+npm run enrich   # verify: GitHub stars/activity + real HTTPS probe → enrichment.json
+npm run data     # re-run to merge fresh enrichment back into apis.json
 ```
 
-[`scripts/build-data.mjs`](scripts/build-data.mjs) parses every per-category markdown table (`API | Description | Auth | HTTPS | CORS`), normalizes the inconsistent cells into stable values, de-dupes, and emits a single JSON file the frontend loads statically.
+[`scripts/build-data.mjs`](scripts/build-data.mjs) parses every per-category markdown table (`API | Description | Auth | HTTPS | CORS`), normalizes the inconsistent cells, de-dupes, stamps curated popularity ranks, and emits category metadata.
+
+[`scripts/enrich.mjs`](scripts/enrich.mjs) is the honesty pass — concurrency-limited and timeout-bounded over all 1,562 entries: GitHub-repo links get **stars + last-commit date** (token via `gh auth token`); every entry gets a real **HTTPS request** to confirm reachability and that HTTPS actually completes, reconciled with the README's claimed flag. Full details + coverage numbers in **[HOW_IT_WORKS.md](HOW_IT_WORKS.md)**.
 
 ![Live playground — testing a no-auth, CORS-enabled API directly in the browser](assets/playground.png)
 
@@ -67,8 +83,12 @@ npm install
 npm run dev      # → http://localhost:7690
 npm run build    # production build
 npm run data     # rebuild data/apis.json from the upstream README
-npm run shot      # capture README screenshots (needs a running server)
+npm run enrich   # run the GitHub + HTTPS verification pass → enrichment.json
+npm run shot     # capture README screenshots (needs a running server)
 ```
+
+See **[HOW_IT_WORKS.md](HOW_IT_WORKS.md)** for the full architecture, data
+pipeline, verification model, proxy internals, animated hero and project layout.
 
 **Stack:** Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · framer-motion. Almost entirely static + client-side filtering, with one lightweight serverless route for the proxy. Hosts on Vercel's free tier.
 
