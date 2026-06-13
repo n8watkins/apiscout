@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+@theme {
+  /* Light "dev playground" palette: near-white surfaces, electric indigo accent. */
+  --color-bg: #f7f8fb;
+  --color-surface: #ffffff;
+  --color-card: #ffffff;
+  --color-edge: #e6e8ef;
+  --color-edge-strong: #d3d7e3;
+  --color-ink: #1a1d29;
+  --color-mute: #6b7185;
+  --color-faint: #9aa0b3;
+  --color-accent: #4f46e5; /* indigo-600 */
+  --color-accent-2: #2563eb; /* blue-600 */
+  --color-accent-soft: #eef0ff;
+  --color-good: #16a34a;
+  --color-good-soft: #e7f6ec;
+  --color-warn: #d97706;
+  --color-warn-soft: #fdf1e0;
+  --color-bad: #dc2626;
+  --color-bad-soft: #fdeaea;
+
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code",
+    Menlo, Consolas, monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background:
+    radial-gradient(60rem 60rem at 80% -10%, #eef1ff 0%, transparent 55%),
+    radial-gradient(50rem 50rem at -10% 0%, #e9f2ff 0%, transparent 50%),
+    var(--color-bg);
+  background-attachment: fixed;
+}
+
+/* Thin, unobtrusive scrollbar for the JSON viewer + code blocks. */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-edge-strong) transparent;
+}
+.scroll-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--color-edge-strong);
+  border-radius: 999px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Focus ring used across interactive elements for keyboard a11y. */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+.pulse-dot {
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-edge) 25%,
+    #f0f1f6 50%,
+    var(--color-edge) 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+/* Syntax highlighting for the JSON viewer. */
+.tok-key { color: #4f46e5; }
+.tok-str { color: #0f766e; }
+.tok-num { color: #c2410c; }
+.tok-bool { color: #9333ea; }
+.tok-null { color: #9aa0b3; }
+.tok-punct { color: #6b7185; }
