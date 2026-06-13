@@ -43,12 +43,28 @@ export function sortApis(apis: Api[], key: SortKey): Api[] {
   }
 }
 
-/** The curated "Popular APIs" featured strip — top-ranked, callable entries. */
+/** The curated "Popular APIs" featured strip — top-ranked, callable entries,
+ * de-duped by hostname so near-identical upstream rows don't both show up. */
 export function featuredApis(apis: Api[], n = 8): Api[] {
-  return apis
+  const seen = new Set<string>();
+  const out: Api[] = [];
+  for (const a of apis
     .filter((a) => a.popularity)
-    .sort((a, b) => (a.popularity ?? 0) - (b.popularity ?? 0))
-    .slice(0, n);
+    .sort((a, b) => (a.popularity ?? 0) - (b.popularity ?? 0))) {
+    let host = "";
+    try {
+      host = new URL(a.url).hostname.replace(/^www\./, "").toLowerCase();
+    } catch {
+      host = a.name.toLowerCase();
+    }
+    // Collapse api.* and bare hosts (e.g. api.coingecko.com / coingecko.com).
+    const base = host.replace(/^api\./, "");
+    if (seen.has(base)) continue;
+    seen.add(base);
+    out.push(a);
+    if (out.length >= n) break;
+  }
+  return out;
 }
 
 /** GitHub repo star count for the project itself, cached at the edge. Best-effort:
