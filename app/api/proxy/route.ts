@@ -13,7 +13,47 @@ export const runtime = "nodejs";
 const MAX_BYTES = 1_000_000; // 1 MB response cap
 const TIMEOUT_MS = 8_000;
 
+// Per-IP rate limit. This is an in-process backstop: serverless instances are
+// ephemeral and not shared, so it resets on cold starts and won't catch a
+// distributed abuser — that's the job of a platform rate limit (Vercel WAF).
+// What it does cheaply stop is a single client scripting the proxy as a fetch
+// relay. The Map is bounded by opportunistic eviction of expired entries.
+const RL_WINDOW_MS = 60_000;
+const RL_MAX = 30; // requests per window per IP
+const rlHits = new Map<string, { count: number; reset: number }>();
+
+function clientIp(req: Request): string {
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) return xff.split(",")[0].trim();
+  return req.headers.get("x-real-ip") ?? "unknown";
+}
+
+function rateLimit(ip: string): { ok: boolean; retryAfter: number } {
+  const now = Date.now();
+  if (rlHits.size > 5000) {
+    for (const [k, v] of rlHits) if (v.reset < now) rlHits.delete(k);
+  }
+  const entry = rlHits.get(ip);
+  if (!entry || entry.reset < now) {
+    rlHits.set(ip, { count: 1, reset: now + RL_WINDOW_MS });
+    return { ok: true, retryAfter: 0 };
+  }
+  entry.count++;
+  if (entry.count > RL_MAX) {
+    return { ok: false, retryAfter: Math.ceil((entry.reset - now) / 1000) };
+  }
+  return { ok: true, retryAfter: 0 };
+}
+
 export async function GET(req: Request) {
+  const rl = rateLimit(clientIp(req));
+  if (!rl.ok) {
+    return NextResponse.json(
+      { ok: false, error: "Rate limit exceeded — slow down a moment." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+    );
+  }
+
   const target = new URL(req.url).searchParams.get("url");
 
   if (!target) {
