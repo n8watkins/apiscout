@@ -11,6 +11,60 @@ const ROOT = path.join(import.meta.dirname, "..");
 const SOURCE =
   "https://raw.githubusercontent.com/public-apis/public-apis/master/README.md";
 
+// --- Curated popularity seeds (kept in sync with lib/popular.ts) -----------
+// Ordered most-popular first; index drives the rank. The .mjs build script
+// can't import the TS module, so we mirror the host order here. lib/popular.ts
+// remains the source of truth for the app; this list only feeds the build.
+const POPULAR_ORDER = [
+  "jsonplaceholder.typicode.com", "pokeapi.co", "api.openweathermap.org",
+  "openweathermap.org", "api.coingecko.com", "coingecko.com", "restcountries.com",
+  "api.nasa.gov", "nasa.gov", "dog.ceo", "catfact.ninja", "open-meteo.com",
+  "api.open-meteo.com", "api.github.com", "github.com", "api.spacexdata.com",
+  "spacexdata.com", "rickandmortyapi.com", "swapi.dev", "jikan.moe",
+  "api.jikan.moe", "agify.io", "genderize.io", "nationalize.io",
+  "api.thecatapi.com", "thecatapi.com", "api.thedogapi.com", "thedogapi.com",
+  "randomuser.me", "api.chucknorris.io", "chucknorris.io",
+  "official-joke-api.appspot.com", "icanhazdadjoke.com", "api.adviceslip.com",
+  "adviceslip.com", "api.coinpaprika.com", "coinpaprika.com", "openlibrary.org",
+  "world.openfoodfacts.org", "openfoodfacts.org", "api.frankfurter.app",
+  "frankfurter.app", "open.er-api.com", "api.exchangerate.host",
+  "exchangerate.host", "dummyjson.com", "reqres.in", "api.tvmaze.com",
+  "tvmaze.com", "api.disneyapi.dev", "disneyapi.dev", "ghibliapi.vercel.app",
+  "ghibliapi.herokuapp.com", "api.quotable.io", "quotable.io", "zenquotes.io",
+  "boredapi.com", "api.ipify.org", "ipify.org", "ipapi.co", "api.kanye.rest",
+  "kanye.rest", "yesno.wtf", "api.artic.edu", "artic.edu", "datausa.io",
+  "api.zippopotam.us", "zippopotam.us", "uselessfacts.jsph.pl", "shibe.online",
+  "random.dog", "http.cat", "http.dog", "meowfacts.herokuapp.com",
+  "api.sampleapis.com", "fakerapi.it",
+];
+const POPULAR_RANK = new Map(POPULAR_ORDER.map((h, i) => [h, i + 1]));
+
+const CATEGORY_ICONS = {
+  Animals: "🐾", Anime: "🌸", "Anti-Malware": "🛡️", "Art & Design": "🎨",
+  "Authentication & Authorization": "🔐", Blockchain: "⛓️", Books: "📚",
+  Business: "💼", Calendar: "📅", "Cloud Storage & File Sharing": "☁️",
+  "Continuous Integration": "🔁", Cryptocurrency: "🪙", "Currency Exchange": "💱",
+  "Data Validation": "✅", Development: "💻", Dictionaries: "📖",
+  "Documents & Productivity": "📄", Email: "✉️", Entertainment: "🎬",
+  Environment: "🌱", Events: "🎟️", Finance: "💰", "Food & Drink": "🍔",
+  "Games & Comics": "🎮", Geocoding: "🗺️", Government: "🏛️", Health: "🩺",
+  Jobs: "🧑‍💼", "Machine Learning": "🤖", Music: "🎵", News: "📰",
+  "Open Data": "📊", "Open Source Projects": "🌐", Patent: "📝",
+  Personality: "🧠", Phone: "📱", Photography: "📷", Programming: "⌨️",
+  "Science & Math": "🔬", Security: "🔒", Shopping: "🛍️", Social: "💬",
+  "Sports & Fitness": "🏅", "Test Data": "🧪", "Text Analysis": "🔤",
+  Tracking: "📦", Transportation: "🚆", "URL Shorteners": "🔗", Vehicle: "🚗",
+  Video: "📺", Weather: "🌦️",
+};
+
+function hostOf(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Normalizers — the upstream table cells are inconsistent, so collapse them
 // into a small set of stable values the UI can filter on.
@@ -129,6 +183,32 @@ async function main() {
     deduped.push(a);
   }
 
+  // Stamp curated popularity rank by hostname.
+  for (const a of deduped) {
+    const rank = POPULAR_RANK.get(hostOf(a.url));
+    if (rank) a.popularity = rank;
+  }
+
+  // Merge any cached enrichment (stars / activity / HTTPS verification) keyed
+  // by name::url. Produced by scripts/enrich.mjs and committed to git so the
+  // build never depends on the network for verification data.
+  const enrichPath = path.join(ROOT, "data", "enrichment.json");
+  let enrichMap = {};
+  let enrichedAt;
+  if (fs.existsSync(enrichPath)) {
+    try {
+      const cache = JSON.parse(fs.readFileSync(enrichPath, "utf8"));
+      enrichMap = cache.entries ?? {};
+      enrichedAt = cache.generatedAt;
+    } catch (e) {
+      console.warn("Could not read enrichment cache:", e.message);
+    }
+  }
+  for (const a of deduped) {
+    const e = enrichMap[`${a.name}::${a.url}`];
+    if (e) a.enrich = e;
+  }
+
   // Stable sort: category, then name.
   deduped.sort(
     (a, b) =>
@@ -137,9 +217,23 @@ async function main() {
 
   const categories = [...new Set(deduped.map((a) => a.category))].sort();
 
+  const categoryMeta = categories.map((name) => ({
+    name,
+    count: deduped.filter((a) => a.category === name).length,
+    icon: CATEGORY_ICONS[name] ?? "🧩",
+  }));
+
   const corsNoAuth = deduped.filter(
     (a) => a.cors === true && a.auth === "none"
   ).length;
+
+  const enriched = deduped.filter((a) => a.enrich);
+  const enrichStats = {
+    httpsVerified: enriched.filter((a) => a.enrich.httpsOk === true).length,
+    githubEnriched: enriched.filter((a) => typeof a.enrich.stars === "number").length,
+    reachable: enriched.filter((a) => a.enrich.reachable === true).length,
+    checked: enriched.length,
+  };
 
   const payload = {
     generatedAt: new Date().toISOString(),
@@ -147,6 +241,9 @@ async function main() {
     count: deduped.length,
     categoryCount: categories.length,
     categories,
+    categoryMeta,
+    enrichedAt,
+    enrichStats,
     stats: {
       noAuth: deduped.filter((a) => a.auth === "none").length,
       cors: deduped.filter((a) => a.cors === true).length,
@@ -163,6 +260,9 @@ async function main() {
   );
   console.log(
     `  no-auth: ${payload.stats.noAuth} · CORS: ${payload.stats.cors} · no-auth+CORS: ${corsNoAuth}`
+  );
+  console.log(
+    `  popular-tagged: ${deduped.filter((a) => a.popularity).length} · enriched: ${enrichStats.checked} (https-verified ${enrichStats.httpsVerified}, github ${enrichStats.githubEnriched})`
   );
 }
 

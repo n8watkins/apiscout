@@ -1,10 +1,58 @@
 import raw from "@/data/apis.json";
-import type { ApiData } from "@/lib/types";
+import type { ApiData, Api } from "@/lib/types";
 
 export const apiData = raw as ApiData;
 
-/** GitHub repo star count, cached at the edge. Best-effort: returns null on
- * any failure so the page never blocks on it. */
+export type SortKey = "popular" | "az" | "recent";
+
+/** Blended popularity score: lower is "more popular". Curated rank dominates;
+ * GitHub stars fill in for un-ranked entries and break ties. */
+function popularityScore(a: Api): number {
+  if (a.popularity) return a.popularity; // 1..N curated, always wins
+  const stars = a.enrich?.stars;
+  if (typeof stars === "number" && stars > 0) {
+    // Map stars onto a band *below* the curated set so curated always sorts
+    // first, but star-rich repos beat unknown long-tail entries.
+    return 1000 - Math.min(999, Math.log10(stars + 1) * 120);
+  }
+  return Number.MAX_SAFE_INTEGER;
+}
+
+/** Most recent "lastChecked" timestamp, for the Recently-checked sort. */
+function lastCheckedTs(a: Api): number {
+  const t = a.enrich?.lastChecked;
+  return t ? Date.parse(t) : 0;
+}
+
+export function sortApis(apis: Api[], key: SortKey): Api[] {
+  const copy = [...apis];
+  switch (key) {
+    case "popular":
+      return copy.sort(
+        (a, b) =>
+          popularityScore(a) - popularityScore(b) ||
+          (b.enrich?.stars ?? 0) - (a.enrich?.stars ?? 0) ||
+          a.name.localeCompare(b.name)
+      );
+    case "az":
+      return copy.sort((a, b) => a.name.localeCompare(b.name));
+    case "recent":
+      return copy.sort(
+        (a, b) => lastCheckedTs(b) - lastCheckedTs(a) || a.name.localeCompare(b.name)
+      );
+  }
+}
+
+/** The curated "Popular APIs" featured strip — top-ranked, callable entries. */
+export function featuredApis(apis: Api[], n = 8): Api[] {
+  return apis
+    .filter((a) => a.popularity)
+    .sort((a, b) => (a.popularity ?? 0) - (b.popularity ?? 0))
+    .slice(0, n);
+}
+
+/** GitHub repo star count for the project itself, cached at the edge. Best-effort:
+ * returns null on any failure so the page never blocks on it. */
 export async function getStars(): Promise<number | null> {
   try {
     const res = await fetch("https://api.github.com/repos/n8watkins/apiscout", {
