@@ -1,5 +1,7 @@
 # APIScout — search, filter & test 1,500+ free public APIs in your browser
 
+> **Archived (2026-11-01).** This project is no longer maintained and its live site has been taken down. The code stays here, read-only, for reference.
+
 **A fast, searchable frontend for the [public-apis/public-apis](https://github.com/public-apis/public-apis) directory — with filters for CORS &amp; auth and a live "Try it" playground that runs real requests right in your browser.**
 
 🌐 **Live: [apiscout.vercel.app](https://apiscout.vercel.app)** · ☕ [Support on Ko-fi](https://ko-fi.com/n8watkins) · ⭐ [Star on GitHub](https://github.com/n8watkins/apiscout)
